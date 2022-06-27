@@ -379,7 +379,8 @@ typedef struct TX_THREAD_STRUCT
 
     ULONG               tx_thread_id;                   /* Control block ID         */
     ULONG               tx_thread_run_count;            /* Thread's run counter     */
-    VOID                *tx_thread_stack_ptr;           /* Thread's stack pointer   */
+    VOID                *tx_thread_stack_ptr;           /* Thread's stack pointer   */ // 指向的不是栈的实时的位置，线程切出时，它运行时的上下文需要保存(各种寄存器的值)到自己的栈中
+                                                                                       // 此ptr为指向此栈的地址
     VOID                *tx_thread_stack_start;         /* Stack starting address   */
     VOID                *tx_thread_stack_end;           /* Stack ending address     */
     ULONG               tx_thread_stack_size;           /* Stack size               */
