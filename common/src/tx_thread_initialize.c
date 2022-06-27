@@ -45,19 +45,19 @@ VOID *          _tx_thread_system_stack_ptr;
 /* Define the current thread pointer.  This variable points to the currently
    executing thread.  If this variable is NULL, no thread is executing.  */
 
-TX_THREAD *     _tx_thread_current_ptr;
+TX_THREAD *     _tx_thread_current_ptr; // 指向正在运行的thread的结构体
 
 
 /* Define the variable that holds the next thread to execute.  It is important
    to remember that this is not necessarily equal to the current thread 
    pointer.  */
 
-TX_THREAD *     _tx_thread_execute_ptr;
+TX_THREAD *     _tx_thread_execute_ptr; // 下一个希望运行的thread
 
 
 /* Define the head pointer of the created thread list.  */
 
-TX_THREAD *     _tx_thread_created_ptr;
+TX_THREAD *     _tx_thread_created_ptr; // 已经创建了的thread的列表
 
 
 /* Define the variable that holds the number of created threads. */
@@ -71,7 +71,7 @@ ULONG           _tx_thread_created_count;
    initialized to TX_INITIALIZE_IN_PROGRESS to indicate initialization is
    active.  */
 
-volatile ULONG  _tx_thread_system_state =  TX_INITIALIZE_IN_PROGRESS;
+volatile ULONG  _tx_thread_system_state =  TX_INITIALIZE_IN_PROGRESS; // 
 
 
 /* Define the 32-bit priority bit-maps. There is one priority bit map for each
@@ -79,7 +79,7 @@ volatile ULONG  _tx_thread_system_state =  TX_INITIALIZE_IN_PROGRESS;
    only one bit map. Each bit within a priority bit map represents that one 
    or more threads at the associated thread priority are ready.  */
 
-ULONG           _tx_thread_priority_maps[TX_MAX_PRIORITIES/32];
+ULONG           _tx_thread_priority_maps[TX_MAX_PRIORITIES/32]; // 32个优先级是否有ready线程的bit位标记，用来快速查找对应优先级是否有可以执行的thread
 
 
 /* Define the priority map active bit map that specifies which of the previously 
@@ -99,7 +99,7 @@ ULONG           _tx_thread_priority_map_active;
    level that had preemption-threshold active to protect against preemption of a 
    range of relatively higher priority threads.  */
 
-ULONG           _tx_thread_preempted_maps[TX_MAX_PRIORITIES/32];
+ULONG           _tx_thread_preempted_maps[TX_MAX_PRIORITIES/32]; // 也是一个bitmap
 
 
 /* Define the preempt map active bit map that specifies which of the previously 
@@ -123,20 +123,20 @@ UINT            _tx_thread_highest_priority;
    represents the first thread ready at priority 10.  If this entry is NULL,
    no threads are ready at that priority.  */
 
-TX_THREAD *     _tx_thread_priority_list[TX_MAX_PRIORITIES];
+TX_THREAD *     _tx_thread_priority_list[TX_MAX_PRIORITIES]; // 每个优先级下的thread双向链表  使用ready指针串起来
 
 
 /* Define the global preempt disable variable.  If this is non-zero, preemption is
    disabled.  It is used internally by ThreadX to prevent preemption of a thread in 
    the middle of a service that is resuming or suspending another thread.  */
 
-volatile UINT   _tx_thread_preempt_disable;
+volatile UINT   _tx_thread_preempt_disable; // 不允许抢占，==0时允许
 
 
 /* Define the global function pointer for mutex cleanup on thread completion or 
    termination. This pointer is setup during mutex initialization.  */
 
-VOID            (*_tx_thread_mutex_release)(TX_THREAD *thread_ptr);
+VOID            (*_tx_thread_mutex_release)(TX_THREAD *thread_ptr); // thread异常或者正常终结时 释放mutex
 
 
 /* Define the global build options variable.  This contains a bit map representing
@@ -172,7 +172,7 @@ VOID            (*_tx_thread_mutex_release)(TX_THREAD *thread_ptr);
                     7                   TX_ENABLE_EXECUTION_CHANGE_NOTIFY defined
                     6-0                 Port Specific   */
 
-ULONG           _tx_build_options;
+ULONG           _tx_build_options; // 用来记录哪些宏有被定义
 
 
 #if defined(TX_ENABLE_STACK_CHECKING) || defined(TX_PORT_THREAD_STACK_ERROR_HANDLING)

@@ -84,12 +84,13 @@ _tx_thread_stack_build:
                        r11         Initial value for r11
                        r0          Initial value for r0    (Hardware stack starts here!!)
                        r1          Initial value for r1
+// Mquestion 1 开机的时候r0 --- r12都是NULL值
                        r2          Initial value for r2
                        r3          Initial value for r3
                        r12         Initial value for r12
-                       lr          Initial value for lr
-                       pc          Initial value for pc
-                       xPSR        Initial value for xPSR
+                       lr          Initial value for lr  // R14  保存函数调用的返回地址
+                       pc          Initial value for pc  // R15  程序计数器 - 保存运行指令的地址，指向正在取址的指令 // ARM是三级流水线:取址，译码，执行。
+                       xPSR        Initial value for xPSR // 保存状态寄存器
 
     Stack Bottom: (higher memory address)  */
 
@@ -102,7 +103,7 @@ _tx_thread_stack_build:
     /* Actually build the stack frame.  */
 
     MOV     r3, #0                                  // Build initial register value
-    STR     r3, [r2, #4]                            // Store initial r4
+    STR     r3, [r2, #4]                            // Store initial r4   // 将r3中的字数据写入以r2 + 4 为地址的寄存器中
     STR     r3, [r2, #8]                            // Store initial r5
     STR     r3, [r2, #12]                           // Store initial r6
     STR     r3, [r2, #16]                           // Store initial r7

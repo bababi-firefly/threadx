@@ -310,7 +310,7 @@ void                            _tx_thread_interrupt_restore(unsigned int new_po
 
 #else
 
-#define TX_INTERRUPT_SAVE_AREA                  register int interrupt_save;
+#define TX_INTERRUPT_SAVE_AREA                  register int interrupt_save; // 用来保存中断寄存器的
 
 #if defined(__GHS_VERSION_NUMBER) && (__GHS_VERSION_NUMBER >= 350)
 

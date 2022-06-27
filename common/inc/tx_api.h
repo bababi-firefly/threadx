@@ -162,12 +162,12 @@ extern   "C" {
 
 /* Thread execution state values.  */
 
-#define TX_READY                        ((UINT) 0)
-#define TX_COMPLETED                    ((UINT) 1)
-#define TX_TERMINATED                   ((UINT) 2)
-#define TX_SUSPENDED                    ((UINT) 3)
-#define TX_SLEEP                        ((UINT) 4)
-#define TX_QUEUE_SUSP                   ((UINT) 5)
+#define TX_READY                        ((UINT) 0) // RESUME后称为READY状态
+#define TX_COMPLETED                    ((UINT) 1) // 正常结束
+#define TX_TERMINATED                   ((UINT) 2) // 非正常结束
+#define TX_SUSPENDED                    ((UINT) 3) //刚被创建出来后的状态
+#define TX_SLEEP                        ((UINT) 4) // 主动睡眠
+#define TX_QUEUE_SUSP                   ((UINT) 5) // 5 -- 13都是资源申请等待的状态
 #define TX_SEMAPHORE_SUSP               ((UINT) 6)
 #define TX_EVENT_FLAG                   ((UINT) 7)
 #define TX_BLOCK_MEMORY                 ((UINT) 8)
@@ -176,7 +176,7 @@ extern   "C" {
 #define TX_FILE                         ((UINT) 11)
 #define TX_TCP_IP                       ((UINT) 12)
 #define TX_MUTEX_SUSP                   ((UINT) 13)
-#define TX_PRIORITY_CHANGE              ((UINT) 14)
+#define TX_PRIORITY_CHANGE              ((UINT) 14) // 修改优先级的中间状态
 
 
 /* API return values.  */
@@ -380,17 +380,17 @@ typedef struct TX_THREAD_STRUCT
     ULONG               tx_thread_id;                   /* Control block ID         */
     ULONG               tx_thread_run_count;            /* Thread's run counter     */
     VOID                *tx_thread_stack_ptr;           /* Thread's stack pointer   */ // 指向的不是栈的实时的位置，线程切出时，它运行时的上下文需要保存(各种寄存器的值)到自己的栈中
-                                                                                       // 此ptr为指向此栈的地址
+                                                                                       // 此ptr为指向此栈的地址，保存的是上下文的地址
     VOID                *tx_thread_stack_start;         /* Stack starting address   */
     VOID                *tx_thread_stack_end;           /* Stack ending address     */
     ULONG               tx_thread_stack_size;           /* Stack size               */
-    ULONG               tx_thread_time_slice;           /* Current time-slice       */
-    ULONG               tx_thread_new_time_slice;       /* New time-slice           */
+    ULONG               tx_thread_time_slice;           /* Current time-slice       */ // 相同优先级的线程通过时间片调度
+    ULONG               tx_thread_new_time_slice;       /* New time-slice           */ // 本次的时间片用完，下次从这里获取时间片
 
     /* Define pointers to the next and previous ready threads.  */
     struct TX_THREAD_STRUCT
                         *tx_thread_ready_next,
-                        *tx_thread_ready_previous;
+                        *tx_thread_ready_previous; // 同一组优先级的通过这个挂载在一起
 
     /***************************************************************/
 
@@ -399,11 +399,12 @@ typedef struct TX_THREAD_STRUCT
     TX_THREAD_EXTENSION_0
 
     CHAR                *tx_thread_name;                /* Pointer to thread's name     */
-    UINT                tx_thread_priority;             /* Priority of thread (0-1023)  */
+    UINT                tx_thread_priority;             /* Priority of thread (0-1023)  */ // 和 preempt_threshold是一对，初次进入看priority，后面抢占看Preemption threshold
     UINT                tx_thread_state;                /* Thread's execution state     */
-    UINT                tx_thread_delayed_suspend;      /* Delayed suspend flag         */
-    UINT                tx_thread_suspending;           /* Thread suspending flag       */
-    UINT                tx_thread_preempt_threshold;    /* Preemption threshold         */
+    UINT                tx_thread_delayed_suspend;      /* Delayed suspend flag         */ // 本身是用tx_thread_suspend挂起线程的，但是此时线程因为等待资源已经自己挂起
+                                                                                           // 会成为此状态
+    UINT                tx_thread_suspending;           /* Thread suspending flag       */ // 保护suspend流程，可以缩短关闭中断时间
+    UINT                tx_thread_preempt_threshold;    /* Preemption threshold         */ // 值通常小于tx_thread_priority(优先级高于上面)
 
     /* Define the thread schedule hook. The usage of this is port/application specific,
        but when used, the function pointer designated is called whenever the thread is
@@ -416,12 +417,12 @@ typedef struct TX_THREAD_STRUCT
        is recompiled.  */
 
     /* Define the thread's entry point and input parameter.  */
-    VOID                (*tx_thread_entry)(ULONG id);
-    ULONG               tx_thread_entry_parameter;
+    VOID                (*tx_thread_entry)(ULONG id); // 入口函数
+    ULONG               tx_thread_entry_parameter; // 入口函数参数
 
     /* Define the thread's timer block.   This is used for thread
        sleep and timeout requests.  */
-    TX_TIMER_INTERNAL   tx_thread_timer;
+    TX_TIMER_INTERNAL   tx_thread_timer; // 用来唤醒线程，最多等待多长时间。 
 
     /* Define the thread's cleanup function and associated data.  This
        is used to cleanup various data structures when a thread
@@ -431,7 +432,7 @@ typedef struct TX_THREAD_STRUCT
     VOID                *tx_thread_suspend_control_block;
     struct TX_THREAD_STRUCT
                         *tx_thread_suspended_next,
-                        *tx_thread_suspended_previous;
+                        *tx_thread_suspended_previous; // 等待资源时，挂在各个资源的 suspension list上的。每一种共享资源都有这么一个列表
     ULONG               tx_thread_suspend_info;
     VOID                *tx_thread_additional_suspend_info;
     UINT                tx_thread_suspend_option;
@@ -445,7 +446,7 @@ typedef struct TX_THREAD_STRUCT
        created list.  */
     struct TX_THREAD_STRUCT
                         *tx_thread_created_next,
-                        *tx_thread_created_previous;
+                        *tx_thread_created_previous; // 创建的线程挂在此链表里
 
     /* Define the third port extension in the thread control block. This
        is typically defined to whitespace in tx_port.h.  */
@@ -459,16 +460,16 @@ typedef struct TX_THREAD_STRUCT
     /* Define the priority inheritance variables. These will be used
        to manage priority inheritance changes applied to this thread
        as a result of mutex get operations.  */
-    UINT                tx_thread_user_priority;
+    UINT                tx_thread_user_priority; // 运行时更改优先级时，会临时先存在这两个位置，还是需要更改到其它两个变量中
     UINT                tx_thread_user_preempt_threshold;
-    UINT                tx_thread_inherit_priority;
+    UINT                tx_thread_inherit_priority; // 继承的优先级
 
     /* Define the owned mutex count and list head pointer.  */
     UINT                tx_thread_owned_mutex_count;
     struct TX_MUTEX_STRUCT
                         *tx_thread_owned_mutex_list;
 
-#ifdef TX_THREAD_ENABLE_PERFORMANCE_INFO
+#ifdef TX_THREAD_ENABLE_PERFORMANCE_INFO   // 用来记录运行时的状态信息的
 
     /* Define the number of times this thread is resumed.  */
     ULONG               tx_thread_performance_resume_count;

@@ -91,11 +91,11 @@
 /*                                                                        */
 /**************************************************************************/
 UINT  _tx_thread_create(TX_THREAD *thread_ptr, CHAR *name_ptr, VOID (*entry_function)(ULONG id), ULONG entry_input,
-                            VOID *stack_start, ULONG stack_size, UINT priority, UINT preempt_threshold,
-                            ULONG time_slice, UINT auto_start)
+                            VOID *stack_start, ULONG stack_size, UINT priority, UINT preempt_threshold, // 栈起始地址，大小
+                            ULONG time_slice, UINT auto_start)  // 相同优先级的线程按时间片运行
 {
 
-TX_INTERRUPT_SAVE_AREA
+TX_INTERRUPT_SAVE_AREA // 定义用来保存中断信息的变量
 
 TX_THREAD               *next_thread;
 TX_THREAD               *previous_thread;
@@ -103,6 +103,7 @@ TX_THREAD               *saved_thread_ptr;
 UINT                    saved_threshold =  ((UINT) 0);
 UCHAR                   *temp_ptr;
 
+// Mstep 2 初始化栈
 #ifdef TX_ENABLE_STACK_CHECKING
 ALIGN_TYPE              new_stack_start;
 ALIGN_TYPE              updated_stack_start;
@@ -150,6 +151,7 @@ ALIGN_TYPE              updated_stack_start;
     /* Prepare the thread control block prior to placing it on the created
        list.  */
 
+    // Mstep 2 初始化Thread 结构
     /* Initialize thread control block to all zeros.  */
     TX_MEMSET(thread_ptr, 0, (sizeof(TX_THREAD)));
 
@@ -196,10 +198,10 @@ ALIGN_TYPE              updated_stack_start;
 #endif
 
     /* Now fill in the values that are required for thread initialization.  */
-    thread_ptr -> tx_thread_state =  TX_SUSPENDED;
+    thread_ptr -> tx_thread_state =  TX_SUSPENDED;  // 创建时都是挂起状态，resume之后才会是ready状态
 
     /* Setup the necessary fields in the thread timer block.  */
-    TX_THREAD_CREATE_TIMEOUT_SETUP(thread_ptr)
+    TX_THREAD_CREATE_TIMEOUT_SETUP(thread_ptr) // 设置定时器
 
     /* Perform any additional thread setup activities for tool or user purpose.  */
     TX_THREAD_CREATE_INTERNAL_EXTENSION(thread_ptr)
@@ -207,7 +209,7 @@ ALIGN_TYPE              updated_stack_start;
     /* Call the target specific stack frame building routine to build the
        thread's initial stack and to setup the actual stack pointer in the
        control block.  */
-    _tx_thread_stack_build(thread_ptr, _tx_thread_shell_entry);
+    _tx_thread_stack_build(thread_ptr, _tx_thread_shell_entry);  // 这块看汇编实现，初始化栈信息
 
 #ifdef TX_ENABLE_STACK_CHECKING
 
@@ -223,6 +225,7 @@ ALIGN_TYPE              updated_stack_start;
 
     /* Place the thread on the list of created threads.  First,
        check for an empty list.  */
+    // 加入created list中
     if (_tx_thread_created_count == TX_EMPTY)
     {
 
@@ -233,7 +236,7 @@ ALIGN_TYPE              updated_stack_start;
     }
     else
     {
-
+        // 挂到双向链表上
         /* This list is not NULL, add to the end of the list.  */
         next_thread =  _tx_thread_created_ptr;
         previous_thread =  next_thread -> tx_thread_created_previous;

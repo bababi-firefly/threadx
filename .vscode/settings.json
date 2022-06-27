@@ -3,6 +3,9 @@
         "tm_api.h": "c",
         "stdio.h": "c",
         "string.h": "c",
-        "tx_block_pool.h": "c"
+        "tx_block_pool.h": "c",
+        "tx_initialize.h": "c",
+        "tx_api.h": "c",
+        "tx_trace.h": "c"
     }
 }
