@@ -95,7 +95,7 @@ UINT  _tx_thread_create(TX_THREAD *thread_ptr, CHAR *name_ptr, VOID (*entry_func
                             ULONG time_slice, UINT auto_start)  // 相同优先级的线程按时间片运行
 {
 
-TX_INTERRUPT_SAVE_AREA // 定义用来保存中断信息的变量
+TX_INTERRUPT_SAVE_AREA // 定义用来保存中断信息的变量，用来存储disable_irq时的DAIF(aarch64时是这样)的值的
 
 TX_THREAD               *next_thread;
 TX_THREAD               *previous_thread;

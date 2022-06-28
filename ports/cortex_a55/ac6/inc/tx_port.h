@@ -313,8 +313,8 @@ __attribute__( ( always_inline ) ) static inline unsigned int __disable_interrup
 
 unsigned long long  daif_value;
 
-    __asm__ volatile (" MRS  %0, DAIF ": "=r" (daif_value) );
-    __asm__ volatile (" MSR  DAIFSet, 0x3" : : : "memory" );
+    __asm__ volatile (" MRS  %0, DAIF ": "=r" (daif_value) ); // 取出daif中的值
+    __asm__ volatile (" MSR  DAIFSet, 0x3" : : : "memory" ); // 对低2位置1，关闭中断
     return((unsigned int) daif_value);
 }
 
@@ -329,7 +329,7 @@ unsigned long long temp;
 
 
 #define TX_INTERRUPT_SAVE_AREA                  UINT interrupt_save;
-#define TX_DISABLE                              interrupt_save =  __disable_interrupts();
+#define TX_DISABLE                              interrupt_save =  __disable_interrupts(); // 保存之前的中断状态
 #define TX_RESTORE                              __restore_interrupts(interrupt_save);
 
 #else
