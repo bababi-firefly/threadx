@@ -114,35 +114,38 @@ ALIGN_TYPE              updated_stack_start;
     /* Set the thread stack to a pattern prior to creating the initial
        stack frame.  This pattern is used by the stack checking routines
        to see how much has been used.  */
-    TX_MEMSET(stack_start, ((UCHAR) TX_STACK_FILL), stack_size);
+    TX_MEMSET(stack_start, ((UCHAR) TX_STACK_FILL), stack_size);  // 把栈用0XEFEFEFEF 填满
 #endif
-
+// 栈检查
 #ifdef TX_ENABLE_STACK_CHECKING
 
     /* Ensure that there are two ULONG of 0xEF patterns at the top and
        bottom of the thread's stack. This will be used to check for stack
        overflow conditions during run-time.  */
-    stack_size =  ((stack_size/(sizeof(ULONG))) * (sizeof(ULONG))) - (sizeof(ULONG));
+       // 真实可用大小，要按4字节对齐
+    stack_size =  ((stack_size/(sizeof(ULONG))) * (sizeof(ULONG))) - (sizeof(ULONG)); // 栈顶和第留两个0xEF的样式，用来在运行过程中判断是否溢出
 
     /* Ensure the starting stack address is evenly aligned.  */
-#ifdef TX_MISRA_ENABLE
+#ifdef TX_MISRA_ENABLE // 定义后，ThreadX将使用符合MISRA C的约定
     new_stack_start = TX_POINTER_TO_ULONG_CONVERT(stack_start);
 #else
     new_stack_start =  TX_POINTER_TO_ALIGN_TYPE_CONVERT(stack_start);
 #endif /* TX_MISRA_ENABLE */
+    // 判断栈首地址是不是4字节对齐的，地址低2位如果有值的话就会得到不同的结果
+    // (111111000 + 011) & 100
     updated_stack_start =  (((new_stack_start) + ((sizeof(ULONG)) - ((ULONG) 1)) ) & (~((sizeof(ULONG)) - ((ULONG) 1))));
 
     /* Determine if the starting stack address is different.  */
-    if (new_stack_start != updated_stack_start)
+    if (new_stack_start != updated_stack_start) // 起始地址不对齐
     {
 
         /* Yes, subtract another ULONG from the size to avoid going past the stack area.  */
-        stack_size =  stack_size - (sizeof(ULONG));
+        stack_size =  stack_size - (sizeof(ULONG)); // 不是4字节对齐的,大小需要变化
     }
 
     /* Update the starting stack pointer.  */
 #ifdef TX_MISRA_ENABLE
-    stack_start = TX_ULONG_TO_POINTER_CONVERT(updated_stack_start);
+    stack_start = TX_ULONG_TO_POINTER_CONVERT(updated_stack_start); // 更新栈起始地址
 #else
     stack_start =  TX_ALIGN_TYPE_TO_POINTER_CONVERT(updated_stack_start);
 #endif /* TX_MISRA_ENABLE */
@@ -165,12 +168,12 @@ ALIGN_TYPE              updated_stack_start;
     thread_ptr -> tx_thread_user_priority =     priority;
     thread_ptr -> tx_thread_time_slice =        time_slice;
     thread_ptr -> tx_thread_new_time_slice =    time_slice;
-    thread_ptr -> tx_thread_inherit_priority =  ((UINT) TX_MAX_PRIORITIES);
+    thread_ptr -> tx_thread_inherit_priority =  ((UINT) TX_MAX_PRIORITIES); // 设置无效继承优先级
 
     /* Calculate the end of the thread's stack area.  */
     temp_ptr =  TX_VOID_TO_UCHAR_POINTER_CONVERT(stack_start);
-    temp_ptr =  (TX_UCHAR_POINTER_ADD(temp_ptr, (stack_size - ((ULONG) 1))));
-    thread_ptr -> tx_thread_stack_end =         TX_UCHAR_TO_VOID_POINTER_CONVERT(temp_ptr);
+    temp_ptr =  (TX_UCHAR_POINTER_ADD(temp_ptr, (stack_size - ((ULONG) 1)))); // stack_size是字节数量
+    thread_ptr -> tx_thread_stack_end =         TX_UCHAR_TO_VOID_POINTER_CONVERT(temp_ptr); // 栈尾地址
 
 #ifndef TX_DISABLE_PREEMPTION_THRESHOLD
 
@@ -201,10 +204,10 @@ ALIGN_TYPE              updated_stack_start;
     thread_ptr -> tx_thread_state =  TX_SUSPENDED;  // 创建时都是挂起状态，resume之后才会是ready状态
 
     /* Setup the necessary fields in the thread timer block.  */
-    TX_THREAD_CREATE_TIMEOUT_SETUP(thread_ptr) // 设置定时器
+    TX_THREAD_CREATE_TIMEOUT_SETUP(thread_ptr) // 设置定时器，定时器用于在thread suspend时将thread唤醒
 
     /* Perform any additional thread setup activities for tool or user purpose.  */
-    TX_THREAD_CREATE_INTERNAL_EXTENSION(thread_ptr)
+    TX_THREAD_CREATE_INTERNAL_EXTENSION(thread_ptr) // 给用户自定义的
 
     /* Call the target specific stack frame building routine to build the
        thread's initial stack and to setup the actual stack pointer in the
@@ -218,7 +221,7 @@ ALIGN_TYPE              updated_stack_start;
 #endif
 
     /* Prepare to make this thread a member of the created thread list.  */
-    TX_DISABLE
+    TX_DISABLE  // 需要搞明白什么时候可以关中断
 
     /* Load the thread ID field in the thread control block.  */
     thread_ptr -> tx_thread_id =  TX_THREAD_ID;
@@ -234,7 +237,7 @@ ALIGN_TYPE              updated_stack_start;
         thread_ptr -> tx_thread_created_next =      thread_ptr;
         thread_ptr -> tx_thread_created_previous =  thread_ptr;
     }
-    else
+    else  // 每一个新的thread会放到链表的末端
     {
         // 挂到双向链表上
         /* This list is not NULL, add to the end of the list.  */
@@ -253,6 +256,7 @@ ALIGN_TYPE              updated_stack_start;
     /* Increment the thread created count.  */
     _tx_thread_created_count++;
 
+    // 底下4行都是debug使用
     /* If trace is enabled, register this object.  */
     TX_TRACE_OBJECT_REGISTER(TX_TRACE_OBJECT_TYPE_THREAD, thread_ptr, name_ptr, TX_POINTER_TO_ULONG_CONVERT(stack_start), stack_size)
 
@@ -275,8 +279,9 @@ ALIGN_TYPE              updated_stack_start;
        thread function and then check for a preemption condition.  */
     if (auto_start == TX_AUTO_START)
     {
-
+ 
         /* Determine if the create call is being called from initialization.  */
+        // M1 thread system在初始化阶段tx_thread_preempt_threshold不应该起作用，所以把它的值设置为了tx_thread_priority
         if (TX_THREAD_GET_SYSTEM_STATE() >= TX_INITIALIZE_IN_PROGRESS)
         {
 
@@ -329,6 +334,7 @@ ALIGN_TYPE              updated_stack_start;
         TX_THREAD_CREATE_EXTENSION(thread_ptr)
 
         /* Call the resume thread function to make this thread ready.  */
+        // M2 autoStart时需要resume线程到ready状态
         _tx_thread_system_resume(thread_ptr);
 #endif
 
@@ -357,7 +363,7 @@ ALIGN_TYPE              updated_stack_start;
         TX_RESTORE
 
         /* Perform any additional activities for tool or user purpose.  */
-        TX_THREAD_CREATE_EXTENSION(thread_ptr)
+        TX_THREAD_CREATE_EXTENSION(thread_ptr) // 留给用户无用
 
         /* Disable interrupts.  */
         TX_DISABLE

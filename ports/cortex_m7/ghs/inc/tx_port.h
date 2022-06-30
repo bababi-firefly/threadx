@@ -25,8 +25,8 @@
 /*                                                                        */
 /*  PORT SPECIFIC C INFORMATION                            RELEASE        */
 /*                                                                        */
-/*    tx_port.h                                            ARMv8-A        */
-/*                                                           6.1.10       */
+/*    tx_port.h                                         Cortex-M7/GHS     */
+/*                                                           6.1.6        */
 /*                                                                        */
 /*  AUTHOR                                                                */
 /*                                                                        */
@@ -48,9 +48,9 @@
 /*    DATE              NAME                      DESCRIPTION             */
 /*                                                                        */
 /*  09-30-2020     William E. Lamie         Initial Version 6.1           */
-/*  01-31-2022     Bhupendra Naphade        Modified comment(s),updated   */
+/*  04-02-2021     Bhupendra Naphade        Modified comment(s),updated   */
 /*                                            macro definition,           */
-/*                                            resulting in version 6.1.10 */
+/*                                            resulting in version 6.1.6  */
 /*                                                                        */
 /**************************************************************************/
 
@@ -62,8 +62,7 @@
 
 #ifdef TX_INCLUDE_USER_DEFINE_FILE
 
-
-/* Yes, include the user defines in tx_user.h. The defines in this file may
+/* Yes, include the user defines in tx_user.h. The defines in this file may 
    alternately be defined on the command line.  */
 
 #include "tx_user.h"
@@ -74,6 +73,8 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <arm_ghs.h>
+#include "tx_ghs.h"
 
 
 /* Define ThreadX basic types for this port.  */
@@ -83,22 +84,10 @@ typedef char                                    CHAR;
 typedef unsigned char                           UCHAR;
 typedef int                                     INT;
 typedef unsigned int                            UINT;
-typedef int                                     LONG;
-typedef unsigned int                            ULONG;
-typedef unsigned long long                      ULONG64;
+typedef long                                    LONG;
+typedef unsigned long                           ULONG;
 typedef short                                   SHORT;
 typedef unsigned short                          USHORT;
-#define ULONG64_DEFINED
-
-/* Override the alignment type to use 64-bit alignment and storage for pointers.  */
-
-#define ALIGN_TYPE_DEFINED
-typedef unsigned long long                      ALIGN_TYPE;
-
-
-/* Override the free block marker for byte pools to be a 64-bit constant.   */
-
-#define TX_BYTE_BLOCK_FREE                      ((ALIGN_TYPE) 0xFFFFEEEEFFFFEEEE)
 
 
 /* Define the priority levels for ThreadX.  Legal values range
@@ -121,22 +110,22 @@ typedef unsigned long long                      ALIGN_TYPE;
    if TX_TIMER_PROCESS_IN_ISR is not defined.  */
 
 #ifndef TX_TIMER_THREAD_STACK_SIZE
-#define TX_TIMER_THREAD_STACK_SIZE              4096        /* Default timer thread stack size  */
+#define TX_TIMER_THREAD_STACK_SIZE              1024        /* Default timer thread stack size  */
 #endif
 
-#ifndef TX_TIMER_THREAD_PRIORITY
+#ifndef TX_TIMER_THREAD_PRIORITY    
 #define TX_TIMER_THREAD_PRIORITY                0           /* Default timer thread priority    */
 #endif
 
 
-/* Define various constants for the ThreadX ARM port.  */
+/* Define various constants for the ThreadX ARM Cortex-M port.  */
 
-#define TX_INT_DISABLE                          0xC0        /* Disable IRQ & FIQ interrupts     */
-#define TX_INT_ENABLE                           0x00        /* Enable IRQ & FIQ interrupts            */
+#define TX_INT_DISABLE                          1           /* Disable interrupts               */
+#define TX_INT_ENABLE                           0           /* Enable interrupts                */
 
 
-/* Define the clock source for trace event entry time stamp. The following two item are port specific.
-   For example, if the time source is at the address 0x0a800024 and is 16-bits in size, the clock
+/* Define the clock source for trace event entry time stamp. The following two item are port specific.  
+   For example, if the time source is at the address 0x0a800024 and is 16-bits in size, the clock 
    source constants would be:
 
 #define TX_TRACE_TIME_SOURCE                    *((ULONG *) 0x0a800024)
@@ -144,77 +133,67 @@ typedef unsigned long long                      ALIGN_TYPE;
 
 */
 
-#ifndef TX_MISRA_ENABLE
 #ifndef TX_TRACE_TIME_SOURCE
-#define TX_TRACE_TIME_SOURCE                    _tx_thread_smp_time_get()
-#endif
-#else
-#ifndef TX_TRACE_TIME_SOURCE
-ULONG   _tx_misra_time_stamp_get(VOID);
-#define TX_TRACE_TIME_SOURCE                    _tx_misra_time_stamp_get()
-#endif
+#define TX_TRACE_TIME_SOURCE                    *((ULONG *) 0xE0001004)  
 #endif
 #ifndef TX_TRACE_TIME_MASK
 #define TX_TRACE_TIME_MASK                      0xFFFFFFFFUL
 #endif
 
 
+/* Define constants for Green Hills EventAnalyzer.  */
+
+/* Define the number of ticks per second. This informs the EventAnalyzer what the timestamps
+   represent.  By default, this is set to 1,000,000 i.e., one tick every microsecond. */
+
+#define TX_EL_TICKS_PER_SECOND                  1000000     
+
+/* Define the method of how to get the upper and lower 32-bits of the time stamp. By default, simply
+   simulate the time-stamp source with a counter.  */                                                            
+
+#define read_tbu()                              _tx_el_time_base_upper    
+#define read_tbl()                              ++_tx_el_time_base_lower   
+
+
 /* Define the port specific options for the _tx_build_options variable. This variable indicates
    how the ThreadX library was built.  */
 
-#ifdef TX_ENABLE_FIQ_SUPPORT
-#define TX_FIQ_ENABLED                          1
-#else
-#define TX_FIQ_ENABLED                          0
-#endif
-
-#ifdef TX_ENABLE_IRQ_NESTING
-#define TX_IRQ_NESTING_ENABLED                  2
-#else
-#define TX_IRQ_NESTING_ENABLED                  0
-#endif
-
-#ifdef TX_ENABLE_FIQ_NESTING
-#define TX_FIQ_NESTING_ENABLED                  4
-#else
-#define TX_FIQ_NESTING_ENABLED                  0
-#endif
-
-#define TX_PORT_SPECIFIC_BUILD_OPTIONS          (TX_FIQ_ENABLED | TX_IRQ_NESTING_ENABLED | TX_FIQ_NESTING_ENABLED)
+#define TX_PORT_SPECIFIC_BUILD_OPTIONS          (0)
 
 
 /* Define the in-line initialization constant so that modules with in-line
    initialization capabilities can prevent their initialization from being
    a function call.  */
 
-#ifdef TX_MISRA_ENABLE
-#define TX_DISABLE_INLINE
-#else
 #define TX_INLINE_INITIALIZATION
-#endif
 
 
-/* Determine whether or not stack checking is enabled. By default, ThreadX stack checking is
+/* Determine whether or not stack checking is enabled. By default, ThreadX stack checking is 
    disabled. When the following is defined, ThreadX thread stack checking is enabled.  If stack
    checking is enabled (TX_ENABLE_STACK_CHECKING is defined), the TX_DISABLE_STACK_FILLING
    define is negated, thereby forcing the stack fill which is necessary for the stack checking
    logic.  */
 
-#ifndef TX_MISRA_ENABLE
 #ifdef TX_ENABLE_STACK_CHECKING
 #undef TX_DISABLE_STACK_FILLING
-#endif
 #endif
 
 
 /* Define the TX_THREAD control block extensions for this port. The main reason
-   for the multiple macros is so that backward compatibility can be maintained with
+   for the multiple macros is so that backward compatibility can be maintained with 
    existing ThreadX kernel awareness modules.  */
 
-#define TX_THREAD_EXTENSION_0
-#define TX_THREAD_EXTENSION_1
-#define TX_THREAD_EXTENSION_2                  ULONG       tx_thread_fp_enable;
-#define TX_THREAD_EXTENSION_3
+#define TX_THREAD_EXTENSION_0          
+#define TX_THREAD_EXTENSION_1                  
+#define TX_THREAD_EXTENSION_2                   VOID *  tx_thread_eh_globals;                           \
+                                                int     Errno;             /* errno.  */                \
+                                                char *  strtok_saved_pos;  /* strtok() position.  */
+#ifndef TX_ENABLE_EXECUTION_CHANGE_NOTIFY
+#define TX_THREAD_EXTENSION_3          
+#else
+#define TX_THREAD_EXTENSION_3           unsigned long long  tx_thread_execution_time_total; \
+                                        unsigned long long  tx_thread_execution_time_last_start; 
+#endif
 
 
 /* Define the port extensions of the remaining ThreadX objects.  */
@@ -228,20 +207,52 @@ ULONG   _tx_misra_time_stamp_get(VOID);
 #define TX_TIMER_EXTENSION
 
 
-/* Define the user extension field of the thread control block.  Nothing
+/* Define the user extension field of the thread control block.  Nothing 
    additional is needed for this port so it is defined as white space.  */
 
 #ifndef TX_THREAD_USER_EXTENSION
-#define TX_THREAD_USER_EXTENSION
+#define TX_THREAD_USER_EXTENSION    
 #endif
 
 
 /* Define the macros for processing extensions in tx_thread_create, tx_thread_delete,
    tx_thread_shell_entry, and tx_thread_terminate.  */
 
+#if (__GHS_VERSION_NUMBER >= 500)
+#define TX_THREAD_CREATE_EXTENSION(thread_ptr)                                  \
+    {                                                                           \
+        extern void __tx_cpp_exception_init(TX_THREAD *thread_ptr);             \
+        __tx_cpp_exception_init(thread_ptr);                                    \
+    }
+#else
+#define TX_THREAD_CREATE_EXTENSION(thread_ptr)                                  \
+    {                                                                           \
+        #pragma weak __cpp_exception_init                                       \
+        extern void __cpp_exception_init(void **);                              \
+        static void (*const cpp_init_funcp)(void **) = __cpp_exception_init;    \
+        if (cpp_init_funcp)                                                     \
+            __cpp_exception_init(&(thread_ptr -> tx_thread_eh_globals));        \
+    }
+#endif
 
-#define TX_THREAD_CREATE_EXTENSION(thread_ptr)
-#define TX_THREAD_DELETE_EXTENSION(thread_ptr)
+#if (__GHS_VERSION_NUMBER >= 500)
+#define TX_THREAD_DELETE_EXTENSION(thread_ptr)                                  \
+    {                                                                           \
+        extern void __tx_cpp_exception_cleanup(TX_THREAD *thread_ptr);          \
+        __tx_cpp_exception_cleanup(thread_ptr);                                 \
+    }
+#else 
+#define TX_THREAD_DELETE_EXTENSION(thread_ptr)                                  \
+    {                                                                           \
+        #pragma weak __cpp_exception_cleanup                                    \
+        extern void __cpp_exception_cleanup(void **);                           \
+        static void (*const cpp_cleanup_funcp)(void **) =                       \
+            __cpp_exception_cleanup;                                            \
+        if (cpp_cleanup_funcp)                                                  \
+            __cpp_exception_cleanup(&(thread_ptr -> tx_thread_eh_globals));     \
+    }
+#endif
+
 #define TX_THREAD_COMPLETED_EXTENSION(thread_ptr)
 #define TX_THREAD_TERMINATED_EXTENSION(thread_ptr)
 
@@ -268,81 +279,98 @@ ULONG   _tx_misra_time_stamp_get(VOID);
 #define TX_TIMER_DELETE_EXTENSION(timer_ptr)
 
 
-/* Determine if the ARM architecture has the CLZ instruction. This is available on
-   architectures v5 and above. If available, redefine the macro for calculating the
+/* Define the get system state macro.   */
+   
+#ifndef TX_THREAD_GET_SYSTEM_STATE
+#define TX_THREAD_GET_SYSTEM_STATE()        (_tx_thread_system_state | __MRS(__IPSR))
+#endif
+
+
+/* Define the check for whether or not to call the _tx_thread_system_return function.  A non-zero value
+   indicates that _tx_thread_system_return should not be called. This overrides the definition in tx_thread.h
+   for Cortex-M since so we don't waste time checking the _tx_thread_system_state variable that is always
+   zero after initialization for Cortex-M ports. */
+
+#ifndef TX_THREAD_SYSTEM_RETURN_CHECK
+#define TX_THREAD_SYSTEM_RETURN_CHECK(c)    (c) = ((ULONG) _tx_thread_preempt_disable); 
+#endif
+
+
+/* Define the macro to ensure _tx_thread_preempt_disable is set early in initialization in order to 
+   prevent early scheduling on Cortex-M parts.  */
+   
+#define TX_PORT_SPECIFIC_POST_INITIALIZATION    _tx_thread_preempt_disable++;
+
+
+/* Determine if the ARM architecture has the CLZ instruction. This is available on 
+   architectures v5 and above. If available, redefine the macro for calculating the 
    lowest bit set.  */
 
 #ifndef TX_DISABLE_INLINE
 
-#define TX_LOWEST_SET_BIT_CALCULATE(m, b)       b =  (UINT) __builtin_ctz((unsigned int) m);
+#define TX_LOWEST_SET_BIT_CALCULATE(m, b)       m = m & ((ULONG) (-((LONG) m))); \
+                                                b = __CLZ32(m); \
+                                                b = 31 - b; 
 
 #endif
 
 
-/* Define the internal timer extension to also hold the thread pointer such that _tx_thread_timeout
-   can figure out what thread timeout to process.  */
-
-#define TX_TIMER_INTERNAL_EXTENSION             VOID    *tx_timer_internal_thread_timeout_ptr;
-
-
-/* Define the thread timeout setup logic in _tx_thread_create.  */
-
-#define TX_THREAD_CREATE_TIMEOUT_SETUP(t)    (t) -> tx_thread_timer.tx_timer_internal_timeout_function =    &(_tx_thread_timeout);            \
-                                             (t) -> tx_thread_timer.tx_timer_internal_timeout_param =       0;                                \
-                                             (t) -> tx_thread_timer.tx_timer_internal_thread_timeout_ptr =  (VOID *) (t);
-
-
-/* Define the thread timeout pointer setup in _tx_thread_timeout.  */
-
-#define TX_THREAD_TIMEOUT_POINTER_SETUP(t)   (t) =  (TX_THREAD *) _tx_timer_expired_timer_ptr -> tx_timer_internal_thread_timeout_ptr;
-
-
-/* Define ThreadX interrupt lockout and restore macros for protection on
-   access of critical kernel information.  The restore interrupt macro must
-   restore the interrupt posture of the running thread prior to the value
+/* Define ThreadX interrupt lockout and restore macros for protection on 
+   access of critical kernel information.  The restore interrupt macro must 
+   restore the interrupt posture of the running thread prior to the value 
    present prior to the disable macro.  In most cases, the save area macro
    is used to define a local function save area for the disable and restore
    macros.  */
 
-#ifndef TX_DISABLE_INLINE
+#ifdef TX_DISABLE_INLINE
 
-/* Define macros, with in-line assembly for performance.  */
+UINT                                            _tx_thread_interrupt_disable(VOID);
+VOID                                            _tx_thread_interrupt_restore(UINT previous_posture);
 
-__attribute__( ( always_inline ) ) static inline unsigned int __disable_interrupts(void)
-{
+#define TX_INTERRUPT_SAVE_AREA                  register INT interrupt_save;
 
-unsigned long long  daif_value;
+#define TX_DISABLE                              interrupt_save = _tx_thread_interrupt_control(TX_INT_DISABLE);
 
-    __asm__ volatile (" MRS  %0, DAIF ": "=r" (daif_value) );
-    __asm__ volatile (" MSR  DAIFSet, 0x3" : : : "memory" );
-    return((unsigned int) daif_value);
-}
-
-__attribute__( ( always_inline ) ) static inline void __restore_interrupts(unsigned int daif_value)
-{
-
-unsigned long long temp;
-
-    temp =  (unsigned long long) daif_value;
-    __asm__ volatile (" MSR  DAIF,%0": : "r" (temp): "memory" );
-}
-
-
-#define TX_INTERRUPT_SAVE_AREA                  UINT interrupt_save;
-#define TX_DISABLE                              interrupt_save =  __disable_interrupts();
-#define TX_RESTORE                              __restore_interrupts(interrupt_save);  // 返回之前的状态
+#define TX_RESTORE                              _tx_thread_interrupt_control(interrupt_save);
 
 #else
 
-unsigned int   _tx_thread_interrupt_disable(void);
-unsigned int   _tx_thread_interrupt_restore(UINT old_posture);
+#define TX_INTERRUPT_SAVE_AREA                  register INT interrupt_save;
 
+/* Define ThreadX interrupt lockout and restore macros using
+   asm macros.  */
 
-#define TX_INTERRUPT_SAVE_AREA                  UINT interrupt_save;
+asm int disable_ints(void)
+{
+%
+    MRS r0,PRIMASK
+    MOV r1,1
+    MSR PRIMASK,r1
+%error
+}
 
-#define TX_DISABLE                              interrupt_save =  _tx_thread_interrupt_disable();
-#define TX_RESTORE                              _tx_thread_interrupt_restore(interrupt_save);
+asm void restore_ints(int a)
+{
+%reg a
+    MSR PRIMASK,a
+%mem a
+    LDR r0,a
+    MSR PRIMASK,r0
+%error
+}
+
+#define TX_DISABLE                              interrupt_save = disable_ints();
+
+#define TX_RESTORE                              restore_ints(interrupt_save);
+
 #endif
+
+
+/* Define FPU extension for the Cortex-M7.  Each is assumed to be called in the context of the executing
+   thread. These are no longer needed, but are preserved for backward compatibility only.  */
+
+void    tx_thread_fpu_enable(void);
+void    tx_thread_fpu_disable(void);
 
 
 /* Define the interrupt lockout macros for each ThreadX object.  */
@@ -355,25 +383,17 @@ unsigned int   _tx_thread_interrupt_restore(UINT old_posture);
 #define TX_SEMAPHORE_DISABLE                    TX_DISABLE
 
 
-/* Define FP extension for ARMv8.  Each is assumed to be called in the context of the executing thread.  */
-
-#ifndef TX_SOURCE_CODE
-#define tx_thread_fp_enable                     _tx_thread_fp_enable
-#define tx_thread_fp_disable                    _tx_thread_fp_disable
-#endif
-
-VOID    tx_thread_fp_enable(VOID);
-VOID    tx_thread_fp_disable(VOID);
-
-
 /* Define the version ID of ThreadX.  This may be utilized by the application.  */
 
 #ifdef TX_THREAD_INIT
 CHAR                            _tx_version_id[] =
-                                    "Copyright (c) Microsoft Corporation. All rights reserved.  *  ThreadX ARMv8-A Version 6.1.10 *";
+                                    "Copyright (c) Microsoft Corporation. All rights reserved.  *  ThreadX Cortex-M7/GHS Version 6.1.9 *";
 #else
 extern  CHAR                    _tx_version_id[];
 #endif
 
 
 #endif
+
+
+
