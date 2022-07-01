@@ -129,6 +129,12 @@ __tx_PendSVHandler:
 
     /* Get current thread value and new thread pointer.  */
 
+/* 
+PendSVhandler的4个步骤:
+    1   stacking 现在的thread
+    2   restore 需要执行的thread  
+*/
+
 __tx_ts_handler:
 
 #if (defined(TX_ENABLE_EXECUTION_CHANGE_NOTIFY) || defined(TX_EXECUTION_PROFILE_ENABLE))
@@ -219,7 +225,7 @@ __tx_ts_new:
 #endif
 
     /* Increment the thread run count.  */
-
+// 2 restore 将要切进来的线程
 __tx_ts_restore:
     LDR     r7, [r1, #4]                            // Pickup the current thread run count // 读取runcount
     LDR     r4, =_tx_timer_time_slice               // Build address of time-slice variable // 
@@ -253,6 +259,7 @@ _skip_vfp_restore:
     // exception return的时候硬件会自己恢复0123245p的寄存器信息
     /* Return to thread.  */
 
+// 3 跳转到下一个thread开始执行
     BX      lr                                      // Return to thread! 跳转到下一个线程进行执行
 
     /* The following is the idle wait processing... in this case, no threads are ready for execution and the

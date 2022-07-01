@@ -100,7 +100,7 @@ TIMER_DECLARE UINT              _tx_timer_expired_time_slice;
 /* Define the thread and application timer entry list.  This list provides a direct access
    method for insertion of times less than TX_TIMER_ENTRIES.  */
 
-TIMER_DECLARE TX_TIMER_INTERNAL *_tx_timer_list[TX_TIMER_ENTRIES];
+TIMER_DECLARE TX_TIMER_INTERNAL *_tx_timer_list[TX_TIMER_ENTRIES]; // 保存了所有的active的timer，数组的下标表示的是还剩多少个tick，剩多少个tick就需要多少个下标
 
 
 /* Define the boundary pointers to the list.  These are setup to easily manage

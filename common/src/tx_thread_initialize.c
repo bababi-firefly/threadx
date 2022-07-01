@@ -123,7 +123,7 @@ UINT            _tx_thread_highest_priority;
    represents the first thread ready at priority 10.  If this entry is NULL,
    no threads are ready at that priority.  */
 
-TX_THREAD *     _tx_thread_priority_list[TX_MAX_PRIORITIES]; // 每个优先级下的thread双向链表  使用ready指针串起来
+TX_THREAD *     _tx_thread_priority_list[TX_MAX_PRIORITIES]; // 每个优先级下的thread双向链表  使用指针串起来，管理的是ready的thread
 
 
 /* Define the global preempt disable variable.  If this is non-zero, preemption is

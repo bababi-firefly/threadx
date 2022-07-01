@@ -73,7 +73,7 @@
 /**************************************************************************/
 VOID  _tx_timer_system_deactivate(TX_TIMER_INTERNAL *timer_ptr)
 {
-
+// 将timer从active列表中删除，并置自己的head为NULL
 TX_TIMER_INTERNAL   **list_head;
 TX_TIMER_INTERNAL   *next_timer;
 TX_TIMER_INTERNAL   *previous_timer;

@@ -159,6 +159,7 @@ TX_THREAD       *thread_ptr;
             /* Suspend the current thread.  */
 
             /* Set the state to suspended.  */
+            // Mstep 1 设置线程状态为SLEEP
             thread_ptr -> tx_thread_state =    TX_SLEEP;
 
 #ifdef TX_NOT_INTERRUPTABLE

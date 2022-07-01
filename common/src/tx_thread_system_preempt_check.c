@@ -41,6 +41,8 @@
 /*                                                                        */
 /*  DESCRIPTION                                                           */
 /*                                                                        */
+/*    函数作用 ： 检测 _tx_thread_preempt_disable是否为0，是否(为0时允许)允许*/
+/*               切换                                                     */
 /*    This function checks for preemption that could have occurred as a   */
 /*    result scheduling activities occurring while the preempt disable    */
 /*    flag was set.                                                       */
@@ -70,7 +72,7 @@
 /*                                            resulting in version 6.1    */
 /*                                                                        */
 /**************************************************************************/
-VOID  _tx_thread_system_preempt_check(VOID)
+VOID  _tx_thread_system_preempt_check(VOID) 
 {
 
 ULONG           combined_flags;
@@ -82,19 +84,21 @@ TX_THREAD       *thread_ptr;
     TX_THREAD_SYSTEM_RETURN_CHECK(combined_flags)
 
     /* Determine if we are in a system state (ISR or Initialization) or internal preemption is disabled.  */
-    if (combined_flags == ((ULONG) 0))
+    // Mstep 1 _tx_thread_preempt_disable 为0时才允许抢占，才能切换
+    if (combined_flags == ((ULONG) 0)) // 
     {
 
         /* No, at thread execution level so continue checking for preemption.  */
 
         /* Pickup thread pointer.  */
-        TX_THREAD_GET_CURRENT(current_thread)
+        // Mstep2 获取全局current_thread_ptr和下一个thread_ptr比较是不是一个线程
+        TX_THREAD_GET_CURRENT(current_thread) // 
 
         /* Pickup the next execute pointer.  */
         thread_ptr =  _tx_thread_execute_ptr;
 
         /* Determine if preemption should take place.  */
-        if (current_thread != thread_ptr)
+        if (current_thread != thread_ptr) // 如果不是一个线程
         {
 
 #ifdef TX_ENABLE_STACK_CHECKING
@@ -122,7 +126,7 @@ TX_THREAD       *thread_ptr;
 #endif
 
             /* Return to the system so the higher priority thread can be scheduled.  */
-            _tx_thread_system_return();
+            _tx_thread_system_return(); // Mstep 3 调用此函数触发pensv_handle
         }
     }
 }

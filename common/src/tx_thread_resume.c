@@ -118,11 +118,11 @@ UINT            map_index;
 
     /* Determine if the thread is suspended or in the process of suspending.
        If so, call the thread resume processing.  */
-    if (thread_ptr -> tx_thread_state == TX_SUSPENDED)
+    if (thread_ptr -> tx_thread_state == TX_SUSPENDED) // 只能resume suspend的thread
     {
 
         /* Determine if the create call is being called from initialization.  */
-        if (TX_THREAD_GET_SYSTEM_STATE() >= TX_INITIALIZE_IN_PROGRESS)
+        if (TX_THREAD_GET_SYSTEM_STATE() >= TX_INITIALIZE_IN_PROGRESS) // 刚开机时初始化的状态
         {
 
             /* Yes, this resume call was made from initialization.  */
@@ -145,7 +145,7 @@ UINT            map_index;
                 /* For initialization, temporarily set the preemption-threshold to the
                    priority level to make sure the highest-priority thread runs once
                    initialization is complete.  */
-                saved_thread_ptr -> tx_thread_preempt_threshold =  saved_thread_ptr -> tx_thread_priority;
+                saved_thread_ptr -> tx_thread_preempt_threshold =  saved_thread_ptr -> tx_thread_priority; // 置成相同的，让tx_thread_preempt_threshold不发生作用
             }
         }
         else

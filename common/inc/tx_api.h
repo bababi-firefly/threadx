@@ -401,9 +401,9 @@ typedef struct TX_THREAD_STRUCT
     CHAR                *tx_thread_name;                /* Pointer to thread's name     */
     UINT                tx_thread_priority;             /* Priority of thread (0-1023)  */ // 和 preempt_threshold是一对，初次进入看priority，后面抢占看Preemption threshold
     UINT                tx_thread_state;                /* Thread's execution state     */
-    UINT                tx_thread_delayed_suspend;      /* Delayed suspend flag         */ // 本身是用tx_thread_suspend挂起线程的，但是此时线程因为等待资源已经自己挂起
+    UINT                tx_thread_delayed_suspend;      /* Delayed suspend flag         */ // 为TRUE时表示双重suspend状态。本身是用tx_thread_suspend挂起线程的，但是此时线程因为等待资源已经自己挂起
                                                                                            // 会成为此状态
-    UINT                tx_thread_suspending;           /* Thread suspending flag       */ // 保护suspend流程，可以缩短关闭中断时间
+    UINT                tx_thread_suspending;           /* Thread suspending flag       */ // 表示在suspend的流程当中，保护suspend流程，可以缩短关闭中断时间
     UINT                tx_thread_preempt_threshold;    /* Preemption threshold         */ // 值通常小于tx_thread_priority(优先级高于上面)
 
     /* Define the thread schedule hook. The usage of this is port/application specific,
@@ -422,7 +422,7 @@ typedef struct TX_THREAD_STRUCT
 
     /* Define the thread's timer block.   This is used for thread
        sleep and timeout requests.  */
-    TX_TIMER_INTERNAL   tx_thread_timer; // 用来唤醒线程，最多等待多长时间。 
+    TX_TIMER_INTERNAL   tx_thread_timer; // 用于在thread suspending时计时唤醒线程，最多等待多长时间。 
 
     /* Define the thread's cleanup function and associated data.  This
        is used to cleanup various data structures when a thread
@@ -572,7 +572,7 @@ typedef struct TX_BLOCK_POOL_STRUCT
     ULONG               tx_block_pool_size;
 
     /* Save the individual memory block size - rounded for alignment.  */
-    UINT                tx_block_pool_block_size;
+    Ustruct TX_THREADINT                tx_block_pool_block_size;
 
     /* Define the block pool suspension list head along with a count of
        how many threads are suspended.  */

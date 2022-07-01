@@ -109,12 +109,14 @@ UINT            map_index;
 #endif
 
     /* Lockout interrupts while the thread is being resumed.  */
-    TX_DISABLE
+    TX_DISABLE // 停中断
 
+// Mstep 1 deactive timer
 #ifndef TX_NO_TIMER
 
     /* Deactivate the timeout timer if necessary.  */
-    if (thread_ptr -> tx_thread_timer.tx_timer_internal_list_head != TX_NULL)
+    if (thread_ptr -> tx_thread_timer.tx_timer_internal_list_head != TX_NULL) // 如果tx_thread_timer是active的，那么它的tx_timer_internal_list_head
+                                                                              // 会指向_tx_timer_list数组(这个数组保存了所有激活状态的timer)中的一个元素
     {
 
         /* Deactivate the thread's timeout timer.  */
@@ -155,12 +157,12 @@ UINT            map_index;
 
     /* Determine if the thread is in the process of suspending.  If so, the thread
        control block is already on the linked list so nothing needs to be done.  */
-    if (thread_ptr -> tx_thread_suspending == TX_FALSE)
+    if (thread_ptr -> tx_thread_suspending == TX_FALSE) // 一般操作都会先开中断然后关中断，会被抢占，通过判断这个suspending状态可以保证不抢占
     {
 
         /* Thread is not in the process of suspending. Now check to make sure the thread
            has not already been resumed.  */
-        if (thread_ptr -> tx_thread_state != TX_READY)
+        if (thread_ptr -> tx_thread_state != TX_READY) // READY的话说明已经执行过了system_resume,不需重复再入
         {
 
             /* No, now check to see if the delayed suspension flag is set.  */
@@ -175,7 +177,7 @@ UINT            map_index;
                 thread_ptr -> tx_thread_state =  TX_READY;
 
                 /* Pickup priority of thread.  */
-                priority =  thread_ptr -> tx_thread_priority;
+                priority =  thread_ptr -> tx_thread_priority; // 获取线程thread优先级
 
                 /* Thread state change.  */
                 TX_THREAD_STATE_CHANGE(thread_ptr, TX_READY)
@@ -197,6 +199,7 @@ UINT            map_index;
                 head_ptr =  _tx_thread_priority_list[priority];
                 if (head_ptr == TX_NULL)
                 {
+                    // 添加到对应优先级list中，这个thread是第一个，所以有可能会参加调度
 
                     /* First thread at this priority ready.  Add to the front of the list.  */
                     _tx_thread_priority_list[priority] =       thread_ptr;
@@ -214,10 +217,12 @@ UINT            map_index;
 #endif
 
                     /* Or in the thread's priority bit.  */
+                    // 记录对应优先级是否存在ready线程的bit
                     TX_MOD32_BIT_SET(priority, priority_bit)
                     _tx_thread_priority_maps[MAP_INDEX] =  _tx_thread_priority_maps[MAP_INDEX] | priority_bit;
 
                     /* Determine if this newly ready thread is the highest priority.  */
+                    // 查看当前线程优先级是否是已ready中最高的
                     if (priority < _tx_thread_highest_priority)
                     {
 
@@ -235,7 +240,8 @@ UINT            map_index;
                         {
 
                             /* Simply setup the execute pointer.  */
-                            _tx_thread_execute_ptr =  thread_ptr;
+                            // Mstep 设置下一个运行的线程为此线程
+                            _tx_thread_execute_ptr =  thread_ptr; // 
                         }
                         else
                         {
@@ -300,6 +306,7 @@ UINT            map_index;
 #endif
 
                                 /* Yes, modify the execute thread pointer.  */
+                                // 因为它优先级高，所以将它设置为下个执行的线程
                                 _tx_thread_execute_ptr =  thread_ptr;
 
 #ifndef TX_MISRA_ENABLE
@@ -388,11 +395,13 @@ UINT            map_index;
                     /* No, there are other threads at this priority already ready.  */
 
                     /* Just add this thread to the priority list.  */
+                    // 挂到对应优先级列表的表尾，只有表头的thread才会参与schedule
                     tail_ptr =                                 head_ptr -> tx_thread_ready_previous;
                     tail_ptr -> tx_thread_ready_next =         thread_ptr;
                     head_ptr -> tx_thread_ready_previous =     thread_ptr;
                     thread_ptr -> tx_thread_ready_previous =   tail_ptr;
                     thread_ptr -> tx_thread_ready_next =       head_ptr;
+                    
                 }
             }
 
@@ -401,6 +410,7 @@ UINT            map_index;
             {
 
                 /* Clear the delayed suspend flag and change the state.  */
+                // 清除双重suspend标记，修改线程状态为一级SUSPENDED
                 thread_ptr -> tx_thread_delayed_suspend =  TX_FALSE;
                 thread_ptr -> tx_thread_state =            TX_SUSPENDED;
             }
@@ -426,7 +436,7 @@ UINT            map_index;
                 {
 
                     /* Clear the suspending flag.  */
-                    thread_ptr -> tx_thread_suspending =   TX_FALSE;
+                    thread_ptr -> tx_thread_suspending =   TX_FALSE; // 在切的流程中 直接改回来就行
 
                     /* Restore the state to ready.  */
                     thread_ptr -> tx_thread_state =        TX_READY;
